@@ -1,0 +1,10 @@
+.git/
+__pycache__/
+*.pyc
+.env
+.venv/
+venv/
+tests/
+infra/.terraform/
+infra/*.tfstate*
+.pytest_cache/

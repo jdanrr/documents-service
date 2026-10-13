@@ -1,0 +1,149 @@
+# kenko.documents — Microservicio Documents
+
+Gestiona autorizaciones médicas, certificado de afiliación e historial médico del portal de salud **kenko** (EPS Colombia). Es autónomo: solo guarda `userId` como referencia y **NO** consulta a Profile en tiempo real. **Solo publica eventos**; en esta versión no consume eventos de otros servicios.
+
+## Arquitectura hexagonal (Ports & Adapters) + eventos
+
+```mermaid
+flowchart TB
+    subgraph Dominio["Dominio (Python puro)"]
+        E["Entidades + Enums + Eventos + Excepciones"]
+    end
+    subgraph Aplicacion["Aplicación"]
+        IN["Puertos entrada<br/>(casos de uso)"]
+        UC["Casos de uso<br/>(orquestación)"]
+        OUT["Puertos salida<br/>(repos, publisher, pdf, storage)"]
+    end
+    subgraph Infra["Infraestructura (adaptadores)"]
+        API["FastAPI routers + schemas + mappers"]
+        MSG["EventBridgePublisher + contratos"]
+        PER["Persistencia + PDF + Storage + Config/DI"]
+    end
+    API --> UC --> E
+    UC --> OUT
+    PER -.-> OUT
+    MSG -.-> OUT
+    API -.-> IN
+```
+
+Dirección de dependencias: `infraestructura → aplicación → dominio`. El dominio no importa FastAPI, Pydantic ni boto3.
+
+> Nota: los puertos viven en `application/ports/input/` y `application/ports/output/` (en vez de `in/`/`out`) porque `in` es palabra reservada de Python y rompería los `import`.
+
+## Puertos y adaptadores
+
+| Puerto (aplicación) | Adaptador (infraestructura) | Notas |
+|---|---|---|
+| `IssueAuthorizationUseCase` | `IssueAuthorizationUseCaseImpl` + `POST /authorizations` | Emite autorización |
+| `GenerateAffiliationCertificateUseCase` | `GenerateAffiliationCertificateUseCaseImpl` + `POST /certificates` | Genera certificado |
+| `AddMedicalHistoryRecordUseCase` | `AddMedicalHistoryRecordUseCaseImpl` + `POST /medical-history/records` | Agrega registro |
+| `UpdateMedicalHistoryRecordUseCase` | `UpdateMedicalHistoryRecordUseCaseImpl` + `PUT /medical-history/records/{id}` | Actualiza registro |
+| `GenerateMedicalHistoryPdfUseCase` | `GenerateMedicalHistoryPdfUseCaseImpl` + `POST /medical-history/export` | Genera PDF del historial |
+| `AuthorizationRepository` / `CertificateRepository` / `MedicalHistoryRecordRepository` / `MedicalHistoryExportRepository` | `InMemory*Repository` en `persistence/` | Esqueleto en memoria; sustituible por DB real sin cambiar puertos |
+| `EventPublisherPort` | `EventBridgePublisher` (boto3, `messaging/publishers/`) | Único lugar con boto3 para eventos; arma el sobre estándar |
+| `PdfGeneratorPort` | `StubPdfGenerator` en `pdf/` | Sin librería real por ahora |
+| `DocumentStoragePort` | `S3DocumentStorage` en `storage/` | Guarda los PDFs porque `MedicalHistoryExport/pdfId` implica persistir el binario para que Notifications lo adjunte. |
+
+- Puertos con `abc.ABC` y no `typing.Protocol`: la herencia explícita falla rápido si falta un método y es más didáctica para proyecto universitario.
+- Sin CQRS, Event Sourcing, Saga ni Outbox: innecesarios porque Documents solo publica y no consume; se pueden evaluar como opcionales después.
+
+## Eventos publicados
+
+Bus único: `kenko-dev-bus` (prod: `kenko-prod-bus`), `source: "kenko.documents"`. Sobre estándar `{source, detail-type, detail: {metadata, data}}`. Regla `documents-to-notifications` → cola `kenko-dev-notifications-documents` (+ DLQ). `correlationId` se propaga desde el header `X-Correlation-Id` o se genera nuevo.
+
+| detail-type | data | Consumidor |
+|---|---|---|
+| `AuthorizationIssued` | authId, userId, procedure, doctor, location, issuedAt | Notifications (envía PDF por correo) |
+| `CertificateGenerated` | certId, userId, issuedAt | Notifications (envía certificado por correo) |
+| `MedicalHistoryPdfGenerated` | pdfId, userId, recordCount, generatedAt | Notifications (envía PDF del historial por correo) |
+| `DocumentsUpdated` | documentId, documentType, userId, operation (CREATE/UPDATE), updatedAt | Ninguno (auditoría, queda en el bus) |
+
+## Configuración
+
+Ver `.env.example` (sin credenciales): `ENV`, `DATABASE_URL`, `AWS_REGION`, `EVENT_BUS_NAME`, `S3_BUCKET_DOCUMENTS`. `Settings` con `pydantic-settings`; composición de `Depends` centralizada en `infrastructure/config/composition.py`; entrada en `app/main.py`.
+
+## Persistencia, despliegue y tests
+
+SQLAlchemy en modo **síncrono** porque es suficiente para el nivel del proyecto y evita la complejidad de async (sesiones, engine y tests más simples).
+
+### Cómo levantar el servicio
+
+```bash
+cp .env.example .env
+docker compose up --build
+# API en http://localhost:8000, salud en GET /health
+```
+
+La `api` espera a que `db` esté saludable y ejecuta `alembic upgrade head` al arrancar.
+
+### Cómo correr migraciones
+
+```bash
+# Con el compose arriba (o con DATABASE_URL apuntando al PostgreSQL local):
+alembic upgrade head
+# Nueva migración tras cambiar models.py:
+alembic revision --autogenerate -m "describe el cambio"
+```
+
+### Cómo correr los tests
+
+Gestor usado: `uv` (lee `pyproject.toml`; versiones fijadas en `uv.lock`, intérprete en `.python-version`). No hubo que cambiar código para usarlo.
+
+```bash
+uv sync --extra dev              # Crea .venv e instala todo (usa uv.lock)
+uv run --frozen pytest -v        # Toda la suite
+uv run --frozen pytest -m unit   # Solo unitarios (sin BD ni AWS)
+DATABASE_URL=postgresql+psycopg://kenko:kenko@localhost:5432/kenko_documents uv run --frozen pytest -m integration
+uv run --frozen pytest tests/api # Routers con TestClient + dependency_overrides
+```
+
+### Esquema de tablas
+
+```mermaid
+erDiagram
+    authorizations ||--o{ users : "user_id (referencia, sin FK)"
+    affiliation_certificates ||--o{ users : "user_id (referencia, sin FK)"
+    medical_history_records ||--o{ users : "user_id (referencia, sin FK)"
+    medical_history_exports ||--o{ users : "user_id (referencia, sin FK)"
+    authorizations {
+        string auth_id PK
+        string user_id
+        string procedure
+        string doctor
+        string location
+        timestamptz issued_at
+        string status
+    }
+    affiliation_certificates {
+        string cert_id PK
+        string user_id
+        timestamptz issued_at
+        string status
+    }
+    medical_history_records {
+        string record_id PK
+        string user_id
+        string category
+        string description
+        timestamptz added_at
+        timestamptz updated_at
+    }
+    medical_history_exports {
+        string pdf_id PK
+        string user_id
+        int record_count
+        timestamptz generated_at
+    }
+```
+
+`user_id` es referencia opaca con índice (vive en Profile, sin FK); `status` con `CHECK`; sin tablas extra (outbox/auditoría quedan como opcionales futuros).
+
+## Pendiente de implementar (TODOs en el código)
+
+- [ ] Lógica de los 5 casos de uso (crear entidad → guardar → mapear evento → publicar).
+- [ ] Mappers `schema ↔ dominio ↔ evento` y schemas de respuesta.
+- [ ] `build_metadata` (UUIDv7 + fecha UTC) y `to_eventbridge_entry`.
+- [ ] `EventBridgePublisher._put` con `boto3 put_events` + manejo de errores.
+- [ ] Repositorios reales (sustituir in-memory) y generador PDF real + `S3DocumentStorage.put_object`.
+- [ ] Middleware/handlers de `correlationId` y excepciones de dominio → HTTP.
+- [ ] Infraestructura AWS (bus, regla, colas) — fuera de este repo por alcance.

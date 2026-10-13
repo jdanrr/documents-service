@@ -1,0 +1,1 @@
+# Adaptador generador de PDF.
