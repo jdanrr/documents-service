@@ -1,15 +1,11 @@
-"""Adaptador EventBridgePublisher (único lugar con boto3 para eventos)."""
+"""Adaptador EventBridgePublisher (único lugar con boto3 para eventos).
 
-import json
-
-import boto3
+NOTA: la firma cambió a publish(events, correlation_id); el dispatch por tipo
+se implementará cuando se haga el adaptador real (fuera de esta tarea).
+"""
 
 from app.application.ports.output.event_publisher_port import EventPublisherPort
-from app.domain import domain_events as events
 from app.infrastructure.config.settings import Settings
-from app.infrastructure.messaging.contracts import envelope as envelope_mod
-from app.infrastructure.messaging.contracts import events as payloads
-from app.infrastructure.messaging.contracts.metadata import build_metadata
 
 
 class EventBridgePublisher(EventPublisherPort):
@@ -19,32 +15,11 @@ class EventBridgePublisher(EventPublisherPort):
         self._settings = settings
         # TODO: self._client = boto3.client("events", region_name=settings.aws_region)
 
-    def _put(self, detail_type: str, payload: dict, correlation_id: str) -> None:
-        """Arma el sobre estándar y lo envía con put_events."""
-        # TODO: metadata = build_metadata(correlation_id)
-        # TODO: envelope = {"source": "kenko.documents", "detail-type": detail_type,
-        # TODO:             "detail": {"metadata": ..., "data": payload}}
-        # TODO: self._client.put_events(Entries=[{"Source": ..., "DetailType": ...,
-        # TODO:                                 "Detail": json.dumps(envelope["detail"]),
-        # TODO:                                 "EventBusName": self._settings.event_bus_name}])
-        raise NotImplementedError
-
-    async def publish_authorization_issued(self, event: events.AuthorizationIssued) -> None:
-        # TODO: mapear evento dominio -> AuthorizationIssuedPayload y llamar _put("AuthorizationIssued", ...).
-        raise NotImplementedError
-
-    async def publish_certificate_generated(
-        self, event: events.CertificateGenerated
-    ) -> None:
-        # TODO: mapear a CertificateGeneratedPayload y _put("CertificateGenerated", ...).
-        raise NotImplementedError
-
-    async def publish_medical_history_pdf_generated(
-        self, event: events.MedicalHistoryPdfGenerated
-    ) -> None:
-        # TODO: mapear a MedicalHistoryPdfGeneratedPayload y _put("MedicalHistoryPdfGenerated", ...).
-        raise NotImplementedError
-
-    async def publish_documents_updated(self, event: events.DocumentsUpdated) -> None:
-        # TODO: mapear a DocumentsUpdatedPayload y _put("DocumentsUpdated", ...).
+    async def publish(self, events: list, correlation_id: str) -> None:
+        """Arma el sobre estándar por evento y lo envía con put_events."""
+        # TODO: por cada evento: build_metadata(correlation_id) + payload según
+        # TODO: tipo (AuthorizationIssued/CertificateGenerated/.../DocumentsUpdated).
+        # TODO: self._client.put_events(Entries=[{"Source": "kenko.documents",
+        # TODO:   "DetailType": ..., "Detail": json.dumps(...),
+        # TODO:   "EventBusName": self._settings.event_bus_name}])
         raise NotImplementedError

@@ -1,33 +1,16 @@
-"""Puerto de publicación de eventos de dominio."""
+"""Puerto de publicación de eventos de dominio.
+
+Un solo método: recibe la lista de eventos en orden y el correlation_id
+(que viaja fuera de los eventos; el sobre lo arma la infraestructura).
+"""
 
 from abc import ABC, abstractmethod
-
-from app.domain import domain_events as events
 
 
 class EventPublisherPort(ABC):
     """Publica eventos de dominio al bus (EventBridge). NUNCA usa boto3 aquí."""
 
     @abstractmethod
-    async def publish_authorization_issued(self, event: events.AuthorizationIssued) -> None:
-        # TODO: implementar en infrastructure/messaging/publishers
-        raise NotImplementedError
-
-    @abstractmethod
-    async def publish_certificate_generated(
-        self, event: events.CertificateGenerated
-    ) -> None:
-        # TODO: implementar en infraestructura
-        raise NotImplementedError
-
-    @abstractmethod
-    async def publish_medical_history_pdf_generated(
-        self, event: events.MedicalHistoryPdfGenerated
-    ) -> None:
-        # TODO: implementar en infraestructura
-        raise NotImplementedError
-
-    @abstractmethod
-    async def publish_documents_updated(self, event: events.DocumentsUpdated) -> None:
-        # TODO: implementar en infraestructura
+    async def publish(self, events: list, correlation_id: str) -> None:
+        """Publica los eventos en el orden recibido."""
         raise NotImplementedError

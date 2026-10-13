@@ -1,7 +1,7 @@
-"""Eventos de dominio (hechos internos, sin sobre EventBridge).
+"""Eventos de dominio (hechos internos, sin sobre ni metadata).
 
-El sobre estándar (source/detail-type/metadata/data) se arma en
-la capa de infraestructura (messaging/contracts), no aquí.
+El sobre estándar (source/detail-type/metadata/data) y el correlation_id
+los arma el publisher en infraestructura, no aquí.
 """
 
 from dataclasses import dataclass
@@ -20,7 +20,6 @@ class AuthorizationIssued:
     doctor: str
     location: str
     issued_at: datetime
-    correlation_id: str
 
 
 @dataclass(frozen=True)
@@ -30,7 +29,6 @@ class CertificateGenerated:
     cert_id: str
     user_id: str
     issued_at: datetime
-    correlation_id: str
 
 
 @dataclass(frozen=True)
@@ -41,7 +39,6 @@ class MedicalHistoryPdfGenerated:
     user_id: str
     record_count: int
     generated_at: datetime
-    correlation_id: str
 
 
 @dataclass(frozen=True)
@@ -53,4 +50,3 @@ class DocumentsUpdated:
     user_id: str
     operation: DocumentOperation
     updated_at: datetime
-    correlation_id: str
