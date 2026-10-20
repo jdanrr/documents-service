@@ -19,7 +19,7 @@ terraform {
   # }
 }
 
-# Región tomada de la variable environment (ver variables.tf).
+# Región tomada de la variable aws_region (ver variables.tf).
 provider "aws" {
   region = var.aws_region
 }

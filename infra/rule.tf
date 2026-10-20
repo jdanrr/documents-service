@@ -1,24 +1,23 @@
-# Regla documents-to-notifications en el bus compartido y su target a la cola SQS.
+# Regla profile-to-documents en el bus compartido y su target a la cola SQS.
+# Sin input_path: EventBridge entrega el evento completo para conservar
+# source y detail-type (misma convención que notifications-service).
 
-resource "aws_cloudwatch_event_rule" "documents_to_notifications" {
+resource "aws_cloudwatch_event_rule" "profile_to_documents" {
   name           = local.rule_name
-  description    = "Enruta eventos de kenko.documents hacia la cola de Notifications."
+  description    = "Enruta eventos de kenko.profile hacia la cola de Documents."
   event_bus_name = data.aws_cloudwatch_event_bus.shared.name
 
   event_pattern = jsonencode({
-    source      = ["kenko.documents"]
-    detail-type = ["AuthorizationIssued", "CertificateGenerated", "MedicalHistoryPdfGenerated"]
-    # NOTA: DocumentsUpdated NO va en el pattern porque no tiene consumidor
-    # operativo por ahora (auditoría; queda publicado en el bus sin regla a SQS).
-    # "DocumentsUpdated"
+    source      = [var.profile_source]
+    detail-type = var.profile_detail_types
   })
 
   tags = local.common_tags
 }
 
-resource "aws_cloudwatch_event_target" "notifications_queue" {
-  rule           = aws_cloudwatch_event_rule.documents_to_notifications.name
+resource "aws_cloudwatch_event_target" "documents_profile_queue" {
+  rule           = aws_cloudwatch_event_rule.profile_to_documents.name
   event_bus_name = data.aws_cloudwatch_event_bus.shared.name
-  target_id      = "notifications-documents-queue"
-  arn            = aws_sqs_queue.notifications.arn
+  target_id      = "documents-profile-queue"
+  arn            = aws_sqs_queue.documents_profile.arn
 }

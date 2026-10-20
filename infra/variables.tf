@@ -22,6 +22,20 @@ variable "aws_region" {
   default     = "us-east-1"
 }
 
+# Productor que consume Documents (Profile). El source va en variable
+# para dejar el pattern legible; los detail-type van en lista aparte.
+variable "profile_source" {
+  description = "Source de EventBridge del productor Profile."
+  type        = string
+  default     = "kenko.profile"
+}
+
+variable "profile_detail_types" {
+  description = "Lista de detail-type de Profile que enruta la regla. Agregar eventos futuros (p. ej. ProfileUpdated) aquí, sin crear otra cola."
+  type        = list(string)
+  default     = ["ProfileCreated"]
+}
+
 # Parámetros SQS expuestos como variables con valores razonables por defecto.
 variable "max_receive_count" {
   description = "Intentos de entrega antes de mover el mensaje a la DLQ."

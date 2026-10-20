@@ -1,4 +1,4 @@
-# Bus de eventos compartido: es único y lo creó Authentication. Aquí solo se referencia.
+# Bus de eventos compartido: es único y ya existe. Aquí solo se referencia.
 # Nombre derivado de variables: {project}-{environment}-bus (kenko-dev-bus / kenko-prod-bus).
 
 data "aws_cloudwatch_event_bus" "shared" {
@@ -11,10 +11,11 @@ data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
 locals {
-  # Nombres según convención: {proyecto}-{entorno}-{consumidor}-{productor}[-dlq]
-  queue_name = "${var.project}-${var.environment}-notifications-documents"
-  dlq_name   = "${var.project}-${var.environment}-notifications-documents-dlq"
-  rule_name  = "documents-to-notifications"
+  # Nombres según convención: {proyecto}-{entorno}-documents-profile[-dlq]
+  # y regla {proyecto}-{entorno}-profile-to-documents.
+  queue_name = "${var.project}-${var.environment}-documents-profile"
+  dlq_name   = "${var.project}-${var.environment}-documents-profile-dlq"
+  rule_name  = "${var.project}-${var.environment}-profile-to-documents"
 
   common_tags = {
     Project     = var.project
