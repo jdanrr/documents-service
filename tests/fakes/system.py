@@ -3,6 +3,7 @@
 from datetime import datetime
 from uuid import UUID, uuid5, NAMESPACE_OID
 
+from app.application.errors import StorageError
 from app.application.ports.output.pdf_storage_ports import DocumentStoragePort
 from app.application.ports.output.system_ports import ClockPort, IdGeneratorPort
 
@@ -34,7 +35,17 @@ class FakeDocumentStorage(DocumentStoragePort):
 
     def __init__(self) -> None:
         self.items: dict[str, bytes] = {}
+        self.fail_next: Exception | None = None
 
-    async def save(self, pdf_id: str, content: bytes) -> str:
-        self.items[pdf_id] = content
-        return f"fake://{pdf_id}.pdf"
+    async def save(
+        self, key: str, content: bytes, content_type: str = "application/pdf"
+    ) -> str:
+        if self.fail_next is not None:
+            error, self.fail_next = self.fail_next, None
+            raise error
+        self.items[key] = content
+        return f"fake://{key}"
+
+    def fail_with_storage_error(self) -> None:
+        """Programa un fallo de subida (StorageError)."""
+        self.fail_next = StorageError("subida fallida")

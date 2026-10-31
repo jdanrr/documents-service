@@ -7,6 +7,7 @@ from app.domain.entities import (
     Authorization,
     MedicalHistoryExport,
     MedicalHistoryRecord,
+    ProfileSnapshot,
 )
 
 
@@ -83,4 +84,13 @@ class MedicalHistoryExportRepository(ABC):
     @abstractmethod
     async def get_by_id(self, pdf_id: str) -> MedicalHistoryExport | None:
         # TODO: implementar en infraestructura
+        raise NotImplementedError
+
+
+class ProfileSnapshotRepository(ABC):
+    """Lee la copia mínima del titular (la escribe el consumidor de ProfileCreated)."""
+
+    @abstractmethod
+    async def get_by_user_id(self, user_id: str) -> ProfileSnapshot | None:
+        """Retorna el snapshot del usuario o None si el perfil aún no llegó."""
         raise NotImplementedError

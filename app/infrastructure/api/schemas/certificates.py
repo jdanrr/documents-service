@@ -2,19 +2,14 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field
-
-
-class GenerateCertificateRequest(BaseModel):
-    """Body para generar un certificado."""
-
-    user_id: str = Field(alias="userId")
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class CertificateResponse(BaseModel):
-    """Respuesta de un certificado."""
+    """Respuesta de un certificado generado."""
 
-    cert_id: str = Field(alias="certId")
-    user_id: str = Field(alias="userId")
+    model_config = ConfigDict(populate_by_name=True)
+
+    certificate_id: str = Field(alias="certificateId")
     issued_at: datetime = Field(alias="issuedAt")
-    status: str
+    affiliation_start_date: datetime = Field(alias="affiliationStartDate")

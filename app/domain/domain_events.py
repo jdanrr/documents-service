@@ -28,7 +28,11 @@ class CertificateGenerated:
 
     cert_id: str
     user_id: str
+    email: str
+    first_name: str
     issued_at: datetime
+    file_key: str
+    file_name: str
 
 
 @dataclass(frozen=True)

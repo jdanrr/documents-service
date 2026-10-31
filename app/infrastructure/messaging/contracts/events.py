@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class AuthorizationIssuedPayload(BaseModel):
@@ -16,12 +16,28 @@ class AuthorizationIssuedPayload(BaseModel):
     issued_at: datetime = Field(alias="issuedAt")
 
 
+class CertificateFilePayload(BaseModel):
+    """Referencia al PDF en S3 (Notifications lo descarga y lo adjunta)."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    bucket: str
+    key: str
+    content_type: str = Field(alias="contentType")
+    file_name: str = Field(alias="fileName")
+
+
 class CertificateGeneratedPayload(BaseModel):
     """data de CertificateGenerated (lo consume Notifications)."""
 
-    cert_id: str = Field(alias="certId")
+    model_config = ConfigDict(populate_by_name=True)
+
+    certificate_id: str = Field(alias="certificateId")
     user_id: str = Field(alias="userId")
+    email: str
+    first_name: str = Field(alias="firstName")
     issued_at: datetime = Field(alias="issuedAt")
+    file: CertificateFilePayload
 
 
 class MedicalHistoryPdfGeneratedPayload(BaseModel):

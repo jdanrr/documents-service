@@ -47,13 +47,38 @@ async def test_issue_passthrough(auth_repo, publisher, clock, ids):
         )
 
 
-async def test_certificate_passthrough(cert_repo, publisher, clock, ids):
-    """EventPublishError del publisher se propaga tal cual."""
+from app.domain.entities import ProfileSnapshot
+
+
+def _seed_snapshot(snapshot_repo, user_id: str = "user-1") -> None:
+    """Siembra el titular de prueba."""
+    from datetime import datetime, timezone
+
+    snapshot_repo.items[user_id] = ProfileSnapshot(
+        user_id=user_id,
+        document_type="CC",
+        document_number="1020304050",
+        first_name="Maria Fernanda",
+        last_name="Gomez Rojas",
+        affiliation_start_date=datetime(2020, 6, 15, 12, 0, 0, tzinfo=timezone.utc),
+    )
+
+
+async def test_certificate_passthrough(snapshot_repo, cert_repo, pdf, storage, publisher, clock, ids):
+    """EventPublishError del publisher se propaga tal cual (certificado guardado)."""
+    _seed_snapshot(snapshot_repo, user_id="u")
     publisher.fail_next = EventPublishError("caído")
-    use_case = GenerateAffiliationCertificateUseCaseImpl(cert_repo, publisher, clock, ids)
+    use_case = GenerateAffiliationCertificateUseCaseImpl(
+        snapshot_repo, cert_repo, pdf, storage, publisher, clock, ids
+    )
     with pytest.raises(EventPublishError):
         await use_case.execute(
-            GenerateAffiliationCertificateCommand(user_id="u", correlation_id="c")
+            GenerateAffiliationCertificateCommand(
+                user_id="u",
+                email="u@example.com",
+                first_name="U",
+                correlation_id="c",
+            )
         )
 
 

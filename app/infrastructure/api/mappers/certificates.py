@@ -1,18 +1,13 @@
-"""Mappers de certificados: schema <-> dominio <-> evento."""
+"""Mappers de certificados: dominio -> schema."""
 
-from app.domain import domain_events as events
 from app.domain.entities import AffiliationCertificate
+from app.infrastructure.api.schemas.certificates import CertificateResponse
 
 
-def domain_to_response(entity: AffiliationCertificate) -> dict:
-    """Convierte entidad a dict de respuesta."""
-    # TODO: mapear cert_id -> certId, issued_at -> issuedAt, status.value.
-    raise NotImplementedError
-
-
-def domain_to_domain_event(
-    entity: AffiliationCertificate, correlation_id: str
-) -> events.CertificateGenerated:
-    """Convierte entidad a evento de dominio."""
-    # TODO: construir CertificateGenerated.
-    raise NotImplementedError
+def domain_to_response(entity: AffiliationCertificate) -> CertificateResponse:
+    """Convierte la entidad a respuesta 201."""
+    return CertificateResponse(
+        certificate_id=entity.cert_id,
+        issued_at=entity.issued_at,
+        affiliation_start_date=entity.affiliation_start_date,
+    )

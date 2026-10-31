@@ -1,5 +1,6 @@
-"""Repositorios SQLAlchemy (esqueletos que cumplen los puertos de salida)."""
+"""Repositorios SQLAlchemy (implementados: certificado y snapshot; resto esqueleto)."""
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.application.ports.output.repository_ports import (
@@ -7,12 +8,19 @@ from app.application.ports.output.repository_ports import (
     CertificateRepository,
     MedicalHistoryExportRepository,
     MedicalHistoryRecordRepository,
+    ProfileSnapshotRepository,
 )
 from app.domain.entities import (
     AffiliationCertificate,
     Authorization,
     MedicalHistoryExport,
     MedicalHistoryRecord,
+    ProfileSnapshot,
+)
+from app.infrastructure.persistence import mappers
+from app.infrastructure.persistence.models import (
+    AffiliationCertificateModel,
+    ProfileSnapshotModel,
 )
 
 
@@ -42,16 +50,23 @@ class SqlAlchemyCertificateRepository(CertificateRepository):
         self._session = session
 
     async def save(self, certificate: AffiliationCertificate) -> AffiliationCertificate:
-        # TODO: implementar como en autorizaciones.
-        raise NotImplementedError
+        row = mappers.certificate_to_orm(certificate)
+        self._session.add(row)
+        self._session.commit()
+        self._session.refresh(row)
+        return mappers.certificate_to_domain(row)
 
     async def get_by_id(self, cert_id: str) -> AffiliationCertificate | None:
-        # TODO: implementar.
-        raise NotImplementedError
+        row = self._session.get(AffiliationCertificateModel, cert_id)
+        return mappers.certificate_to_domain(row) if row is not None else None
 
     async def list_by_user_id(self, user_id: str) -> list[AffiliationCertificate]:
-        # TODO: implementar.
-        raise NotImplementedError
+        rows = self._session.scalars(
+            select(AffiliationCertificateModel)
+            .where(AffiliationCertificateModel.user_id == user_id)
+            .order_by(AffiliationCertificateModel.issued_at)
+        ).all()
+        return [mappers.certificate_to_domain(row) for row in rows]
 
 
 class SqlAlchemyMedicalHistoryRecordRepository(MedicalHistoryRecordRepository):
@@ -90,3 +105,14 @@ class SqlAlchemyMedicalHistoryExportRepository(MedicalHistoryExportRepository):
     async def get_by_id(self, pdf_id: str) -> MedicalHistoryExport | None:
         # TODO: implementar.
         raise NotImplementedError
+
+
+class SqlAlchemyProfileSnapshotRepository(ProfileSnapshotRepository):
+    """Lee la copia mínima del titular en PostgreSQL."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    async def get_by_user_id(self, user_id: str) -> ProfileSnapshot | None:
+        row = self._session.get(ProfileSnapshotModel, user_id)
+        return mappers.snapshot_to_domain(row) if row is not None else None

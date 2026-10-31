@@ -47,8 +47,23 @@ class AffiliationCertificateModel(Base):
 
     cert_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     user_id: Mapped[str] = mapped_column(String(64), nullable=False)  # Referencia, NO FK.
+    affiliation_start_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    file_key: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="ISSUED")
+
+
+class ProfileSnapshotModel(Base):
+    """Tabla profile_snapshots (copia mínima del titular, PK user_id)."""
+
+    __tablename__ = "profile_snapshots"
+
+    user_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    document_type: Mapped[str] = mapped_column(String(10), nullable=False)
+    document_number: Mapped[str] = mapped_column(String(30), nullable=False)
+    first_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    last_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    affiliation_start_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class MedicalHistoryRecordModel(Base):

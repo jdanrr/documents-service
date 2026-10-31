@@ -14,3 +14,6 @@ class Settings(BaseSettings):
     event_bus_name: str = "kenko-dev-bus"  # En prod: kenko-prod-bus
     notifications_rule: str = "documents-to-notifications"
     s3_bucket: str = "kenko-dev-documents"
+    documents_bucket_name: str = "kenko-dev-documents-files"
+    # Solo desarrollo local: en prod JWT_SECRET es obligatorio por entorno.
+    jwt_secret: str = "dev-only-insecure-secret"

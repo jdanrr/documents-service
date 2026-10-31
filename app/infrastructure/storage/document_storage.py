@@ -1,7 +1,8 @@
-"""Adaptador de almacenamiento de PDFs (esqueleto S3 con boto3)."""
+"""Adaptador de almacenamiento de PDFs en S3 (boto3)."""
 
 import boto3
 
+from app.application.errors import StorageError
 from app.application.ports.output.pdf_storage_ports import DocumentStoragePort
 from app.infrastructure.config.settings import Settings
 
@@ -11,11 +12,19 @@ class S3DocumentStorage(DocumentStoragePort):
 
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
-        # TODO: self._client = boto3.client("s3", region_name=settings.aws_region)
+        self._client = boto3.client("s3", region_name=settings.aws_region)
 
-    async def save(self, pdf_id: str, content: bytes) -> str:
-        """Sube el binario al bucket y retorna la key."""
-        # TODO: key = f"medical-history/{pdf_id}.pdf"
-        # TODO: self._client.put_object(Bucket=self._settings.s3_bucket, Key=key, Body=content)
-        # TODO: return key
-        raise NotImplementedError
+    async def save(
+        self, key: str, content: bytes, content_type: str = "application/pdf"
+    ) -> str:
+        """Sube el binario con la key dada (la key nunca lleva datos personales)."""
+        try:
+            self._client.put_object(
+                Bucket=self._settings.documents_bucket_name,
+                Key=key,
+                Body=content,
+                ContentType=content_type,
+            )
+        except Exception as error:
+            raise StorageError("No se pudo guardar el PDF en el almacenamiento.") from error
+        return key

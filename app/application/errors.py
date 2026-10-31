@@ -30,6 +30,23 @@ class EmptyMedicalHistory(ApplicationError):
         super().__init__(f"El usuario '{user_id}' no tiene historial médico para exportar.")
 
 
+class ProfileNotFound(ApplicationError):
+    """No hay copia del titular (el perfil aún no llegó)."""
+
+    def __init__(self, user_id: str) -> None:
+        self.user_id = user_id
+        super().__init__(
+            f"No hay perfil del usuario '{user_id}': el perfil aún no llegó."
+        )
+
+
+class StorageError(ApplicationError):
+    """Falló el guardado del PDF (no se persiste ni se publica nada)."""
+
+    def __init__(self, message: str = "No se pudo guardar el documento.") -> None:
+        super().__init__(message)
+
+
 class EventPublishError(ApplicationError):
     """Falló la publicación de eventos (lo guardado NO se revierte).
 

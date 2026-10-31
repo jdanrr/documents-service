@@ -39,6 +39,8 @@ class GenerateAffiliationCertificateCommand:
     """Comando para generar el certificado de afiliación."""
 
     user_id: str
+    email: str
+    first_name: str
     correlation_id: str
 
 

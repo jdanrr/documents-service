@@ -12,6 +12,7 @@ from tests.fakes.repositories import (
     InMemoryCertificateRepository,
     InMemoryMedicalHistoryExportRepository,
     InMemoryMedicalHistoryRecordRepository,
+    InMemoryProfileSnapshotRepository,
 )
 from tests.fakes.system import FakeDocumentStorage, FixedClock, SequentialIdGenerator
 
@@ -84,3 +85,9 @@ def pdf() -> FakePdfGenerator:
 def storage() -> FakeDocumentStorage:
     """Storage falso en memoria."""
     return FakeDocumentStorage()
+
+
+@pytest.fixture
+def snapshot_repo() -> InMemoryProfileSnapshotRepository:
+    """Repo falso de snapshots del titular."""
+    return InMemoryProfileSnapshotRepository()

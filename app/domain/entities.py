@@ -77,15 +77,18 @@ class Authorization:
 
 @dataclass
 class AffiliationCertificate:
-    """Certificado de afiliación de un usuario."""
+    """Certificado de afiliación de un usuario (foto fija del titular)."""
 
     cert_id: str
     user_id: str
+    affiliation_start_date: datetime
     issued_at: datetime
+    file_key: str = ""
     status: DocumentStatus = DocumentStatus.ISSUED
 
     def __post_init__(self) -> None:
         _require_user_id(self.user_id)
+        _require_utc(self.affiliation_start_date, "affiliation_start_date")
         _require_utc(self.issued_at, "issued_at")
 
     def mark_sent(self) -> None:
@@ -95,6 +98,35 @@ class AffiliationCertificate:
     def mark_failed(self) -> None:
         """Marca fallido el envío (ISSUED -> FAILED)."""
         self.status = _check_transition(self.status, DocumentStatus.FAILED)
+
+
+@dataclass
+class ProfileSnapshot:
+    """Copia mínima del titular (alimentada por el evento ProfileCreated).
+
+    Solo guarda lo que el PDF necesita. Si el titular cambia después,
+    los certificados ya emitidos no se alteran (foto fija).
+    """
+
+    user_id: str
+    document_type: str
+    document_number: str
+    first_name: str
+    last_name: str
+    affiliation_start_date: datetime
+
+    def __post_init__(self) -> None:
+        _require_user_id(self.user_id)
+        _require_text(self.document_type, "document_type")
+        _require_text(self.document_number, "document_number")
+        _require_text(self.first_name, "first_name")
+        _require_text(self.last_name, "last_name")
+        _require_utc(self.affiliation_start_date, "affiliation_start_date")
+
+    @property
+    def full_name(self) -> str:
+        """Nombre completo del titular."""
+        return f"{self.first_name} {self.last_name}"
 
 
 @dataclass

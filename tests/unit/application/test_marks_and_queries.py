@@ -51,11 +51,30 @@ async def _issue(auth_repo, publisher, clock, ids):
     )
 
 
-async def _cert(cert_repo, publisher, clock, ids):
+async def _cert(snapshot_repo, cert_repo, pdf, storage, publisher, clock, ids):
     """Genera un certificado de ejemplo."""
-    use_case = GenerateAffiliationCertificateUseCaseImpl(cert_repo, publisher, clock, ids)
+    from datetime import datetime, timezone
+
+    from app.domain.entities import ProfileSnapshot
+
+    snapshot_repo.items["user-1"] = ProfileSnapshot(
+        user_id="user-1",
+        document_type="CC",
+        document_number="1020304050",
+        first_name="Maria Fernanda",
+        last_name="Gomez Rojas",
+        affiliation_start_date=datetime(2020, 6, 15, 12, 0, 0, tzinfo=timezone.utc),
+    )
+    use_case = GenerateAffiliationCertificateUseCaseImpl(
+        snapshot_repo, cert_repo, pdf, storage, publisher, clock, ids
+    )
     return await use_case.execute(
-        GenerateAffiliationCertificateCommand(user_id="user-1", correlation_id="c")
+        GenerateAffiliationCertificateCommand(
+            user_id="user-1",
+            email="maria.gomez@example.com",
+            first_name="Maria Fernanda",
+            correlation_id="c",
+        )
     )
 
 
@@ -100,9 +119,11 @@ async def test_mark_sent_twice_raises(auth_repo, publisher, clock, ids):
         await marker.execute(MarkAuthorizationCommand(auth_id=created.auth_id))
 
 
-async def test_mark_certificate_roundtrip(cert_repo, publisher, clock, ids):
+async def test_mark_certificate_roundtrip(
+    snapshot_repo, cert_repo, pdf, storage, publisher, clock, ids
+):
     """Certificado: SENT y FAILED, más NotFound y transición inválida."""
-    created = await _cert(cert_repo, publisher, clock, ids)
+    created = await _cert(snapshot_repo, cert_repo, pdf, storage, publisher, clock, ids)
     sent = await MarkCertificateDeliveredUseCaseImpl(cert_repo).execute(
         MarkCertificateCommand(cert_id=created.cert_id)
     )
@@ -119,14 +140,16 @@ async def test_mark_certificate_roundtrip(cert_repo, publisher, clock, ids):
         await MarkCertificateDeliveryFailedUseCaseImpl(cert_repo).execute(
             MarkCertificateCommand(cert_id="no-existe")
         )
-    fresh = await _cert(cert_repo, publisher, clock, ids)
+    fresh = await _cert(snapshot_repo, cert_repo, pdf, storage, publisher, clock, ids)
     failed = await MarkCertificateDeliveryFailedUseCaseImpl(cert_repo).execute(
         MarkCertificateCommand(cert_id=fresh.cert_id)
     )
     assert failed.status == DocumentStatus.FAILED
 
 
-async def test_queries(auth_repo, cert_repo, record_repo, publisher, clock, ids):
+async def test_queries(
+    auth_repo, snapshot_repo, cert_repo, record_repo, pdf, storage, publisher, clock, ids
+):
     """Get/List: camino feliz y NotFound."""
     created = await _issue(auth_repo, publisher, clock, ids)
     found = await GetAuthorizationUseCaseImpl(auth_repo).execute(
@@ -138,7 +161,7 @@ async def test_queries(auth_repo, cert_repo, record_repo, publisher, clock, ids)
             GetAuthorizationCommand(auth_id="no-existe")
         )
 
-    cert = await _cert(cert_repo, publisher, clock, ids)
+    cert = await _cert(snapshot_repo, cert_repo, pdf, storage, publisher, clock, ids)
     found_cert = await GetAffiliationCertificateUseCaseImpl(cert_repo).execute(
         GetAffiliationCertificateCommand(cert_id=cert.cert_id)
     )

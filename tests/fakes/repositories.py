@@ -5,12 +5,14 @@ from app.application.ports.output.repository_ports import (
     CertificateRepository,
     MedicalHistoryExportRepository,
     MedicalHistoryRecordRepository,
+    ProfileSnapshotRepository,
 )
 from app.domain.entities import (
     AffiliationCertificate,
     Authorization,
     MedicalHistoryExport,
     MedicalHistoryRecord,
+    ProfileSnapshot,
 )
 
 
@@ -81,3 +83,13 @@ class InMemoryMedicalHistoryExportRepository(MedicalHistoryExportRepository):
 
     async def get_by_id(self, pdf_id: str) -> MedicalHistoryExport | None:
         return self.items.get(pdf_id)
+
+
+class InMemoryProfileSnapshotRepository(ProfileSnapshotRepository):
+    """Fake de snapshots (dict por user_id)."""
+
+    def __init__(self) -> None:
+        self.items: dict[str, ProfileSnapshot] = {}
+
+    async def get_by_user_id(self, user_id: str) -> ProfileSnapshot | None:
+        return self.items.get(user_id)

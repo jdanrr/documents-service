@@ -4,6 +4,10 @@ Los routers solo piden casos de uso; aquí se construyen con sus adaptadores.
 """
 
 from functools import lru_cache
+from typing import Annotated
+
+from fastapi import Depends
+from sqlalchemy.orm import Session
 
 from app.application.use_cases.add_history_record import AddMedicalHistoryRecordUseCaseImpl
 from app.application.use_cases.export_history_pdf import (
@@ -33,23 +37,26 @@ from app.infrastructure.config.settings import Settings
 from app.infrastructure.messaging.publishers.eventbridge_publisher import (
     EventBridgePublisher,
 )
-from app.infrastructure.pdf.pdf_generator import StubPdfGenerator
+from app.infrastructure.pdf.pdf_generator import (
+    ReportLabCertificatePdfGenerator,
+    StubPdfGenerator,
+)
+from app.infrastructure.persistence.database import get_db as get_db_session
 from app.infrastructure.persistence.in_memory_repositories import (
     InMemoryAuthorizationRepository,
     InMemoryCertificateRepository,
     InMemoryMedicalHistoryExportRepository,
     InMemoryMedicalHistoryRecordRepository,
 )
+from app.infrastructure.persistence.sqlalchemy_repositories import (
+    SqlAlchemyCertificateRepository,
+    SqlAlchemyProfileSnapshotRepository,
+)
 
 
 def get_db():
-    """Sesión SQL por request (una por request, vía Depends).
-
-    TODO: inicializar database.init_database(settings.database_url) al arrancar
-    TODO: y retornar la sesión: from app.infrastructure.persistence.database import get_db.
-    """
-    # TODO: yield from get_db_session() con Depends centralizado aquí.
-    raise NotImplementedError
+    """Sesión SQL por request (una por request, vía Depends)."""
+    yield from get_db_session()
 
 
 # TODO: providers SqlAlchemy*Repository(session=Depends(get_db)) para prod,
@@ -92,10 +99,18 @@ def get_issue_authorization_use_case() -> IssueAuthorizationUseCaseImpl:
     )
 
 
-def get_generate_certificate_use_case() -> GenerateAffiliationCertificateUseCaseImpl:
-    """Cablea generar certificado: repo + publisher + reloj + ids."""
+def get_generate_certificate_use_case(
+    session: Annotated[Session, Depends(get_db)],
+) -> GenerateAffiliationCertificateUseCaseImpl:
+    """Cablea generar certificado: SQL real + PDF + S3 + publisher + reloj + ids."""
     return GenerateAffiliationCertificateUseCaseImpl(
-        InMemoryCertificateRepository(), get_event_publisher(), _clock(), _ids()
+        SqlAlchemyProfileSnapshotRepository(session),
+        SqlAlchemyCertificateRepository(session),
+        ReportLabCertificatePdfGenerator(),
+        S3DocumentStorage(get_settings()),
+        get_event_publisher(),
+        _clock(),
+        _ids(),
     )
 
 
