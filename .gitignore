@@ -5,3 +5,11 @@
 *.tfstate.*
 crash.log
 crash.*.log
+
+# Python
+__pycache__/
+*.pyc
+.coverage
+.venv/
+*.egg-info/
+.DS_Store
