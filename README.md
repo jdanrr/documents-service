@@ -1,6 +1,6 @@
 # kenko.documents — Microservicio Documents
 
-Gestiona autorizaciones médicas, certificado de afiliación e historial médico del portal de salud **kenko** (EPS Colombia). Es autónomo: solo guarda `userId` como referencia y **NO** consulta a Profile en tiempo real. **Solo publica eventos**; en esta versión no consume eventos de otros servicios.
+Gestiona autorizaciones médicas, certificado de afiliación e historial médico del portal de salud **kenko** (EPS Colombia). Es autónomo: solo guarda `userId` como referencia y **NO** consulta a Profile en tiempo real. Publica sus propios eventos y consume `ProfileCreated` de Profile (ver `infra/`).
 
 ## Arquitectura hexagonal (Ports & Adapters) + eventos
 
@@ -45,11 +45,11 @@ Dirección de dependencias: `infraestructura → aplicación → dominio`. El do
 | `DocumentStoragePort` | `S3DocumentStorage` en `storage/` | Guarda los PDFs porque `MedicalHistoryExport/pdfId` implica persistir el binario para que Notifications lo adjunte. |
 
 - Puertos con `abc.ABC` y no `typing.Protocol`: la herencia explícita falla rápido si falta un método y es más didáctica para proyecto universitario.
-- Sin CQRS, Event Sourcing, Saga ni Outbox: innecesarios porque Documents solo publica y no consume; se pueden evaluar como opcionales después.
+- Sin CQRS, Event Sourcing, Saga ni Outbox: innecesarios porque Documents solo publica eventos propios y consume únicamente `ProfileCreated`; se pueden evaluar como opcionales después.
 
 ## Eventos publicados
 
-Bus único: `kenko-dev-bus` (prod: `kenko-prod-bus`), `source: "kenko.documents"`. Sobre estándar `{source, detail-type, detail: {metadata, data}}`. Regla `documents-to-notifications` → cola `kenko-dev-notifications-documents` (+ DLQ). `correlationId` se propaga desde el header `X-Correlation-Id` o se genera nuevo.
+Bus único: `kenko-dev-bus` (prod: `kenko-prod-bus`), `source: "kenko.documents"`. Sobre estándar `{source, detail-type, detail: {metadata, data}}`. Los eventos de Documents los consume Notifications con su propia cola y regla (las crea Notifications en su Terraform). Documents consume `ProfileCreated` de Profile con la regla `kenko-{env}-profile-to-documents` → cola `kenko-{env}-documents-profile` (+ DLQ), definidas en `infra/`. `correlationId` se propaga desde el header `X-Correlation-Id` o se genera nuevo.
 
 | detail-type | data | Consumidor |
 |---|---|---|

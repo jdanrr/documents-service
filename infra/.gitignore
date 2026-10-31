@@ -1,0 +1,3 @@
+# Ignora tfvars con datos sensibles, salvo los ejemplos versionados de envs/.
+*.tfvars
+!envs/*.tfvars

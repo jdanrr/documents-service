@@ -13,9 +13,11 @@ data "aws_region" "current" {}
 locals {
   # Nombres según convención: {proyecto}-{entorno}-documents-profile[-dlq]
   # y regla {proyecto}-{entorno}-profile-to-documents.
-  queue_name = "${var.project}-${var.environment}-documents-profile"
-  dlq_name   = "${var.project}-${var.environment}-documents-profile-dlq"
-  rule_name  = "${var.project}-${var.environment}-profile-to-documents"
+  queue_name  = "${var.project}-${var.environment}-documents-profile"
+  dlq_name    = "${var.project}-${var.environment}-documents-profile-dlq"
+  rule_name   = "${var.project}-${var.environment}-profile-to-documents"
+  bucket_name = "${var.project}-${var.environment}-documents-files"
+  policy_name = "${var.project}-${var.environment}-documents-service"
 
   common_tags = {
     Project     = var.project

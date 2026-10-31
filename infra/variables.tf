@@ -60,3 +60,10 @@ variable "dlq_message_retention_seconds" {
   type        = number
   default     = 1209600
 }
+
+# Permite destruir el bucket aunque tenga objetos (true solo en dev).
+variable "force_destroy" {
+  description = "Si es true, el bucket S3 se destruye sin vaciarlo a mano."
+  type        = bool
+  default     = false
+}
